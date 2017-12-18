@@ -24,7 +24,7 @@ class TNode {
     // from base classes this should be called first
     this.selected =
       this.createTime != null && settings.time == this.createTime ||
-      this.destroyTime != null && parseSettings.withDestroy && ettings.time == this.destroyTime
+      this.destroyTime != null && parseSettings.withDestroy && settings.time == this.destroyTime
       ;
     this.pruned = this.pruneTime != null && settings.time >= this.pruneTime;
     this.refineAbort = this.refineAbortTime != null && settings.time >= this.refineAbortTime;
@@ -34,7 +34,6 @@ class TNode {
         this.canon = true;
     }
     this.wasCanon = this.canonEndTime != null && settings.time >= this.canonEndTime;
-    if(this.id == 1000 || this.id == 4) console.log(this);
 
     if(this.createTime != null && settings.time < this.createTime) {
       this.hide();
@@ -122,9 +121,7 @@ class TreeNode extends TNode {
     let header = "Id: " + this.id;
     if(this.targetCell != null)
       header += ", Tar: " + this.targetCell;
-    div.append('span')
-      .attr('style', 'white-space: nowrap;')
-      .text(header);
+    div.append('span').text(header);
     if(this.pi != null) {
       let pi = "(";
       for(let iCell = 0; iCell != this.pi.cells.length; ++iCell) {
@@ -153,9 +150,17 @@ class TreeNode extends TNode {
     this.children.push(t);
   }
 
-  addLeafAut(createTime, to) {
+  addLeafAut(createTime, to, perm) {
     console.assert(to != null, "");
-    let a = new AutNode(createTime, this, to);
+    let a = new AutNode(createTime, this, perm, to);
+    this.auts.push(a);
+    this.children.push(a);
+    return a;
+  }
+
+  addImplicitAut(createTime, tag, perm) {
+    let a = new AutNode(createTime, this, perm, null);
+    a.tag = tag;
     this.auts.push(a);
     this.children.push(a);
     return a;
@@ -178,8 +183,9 @@ class TreeNode extends TNode {
 }
 
 class AutNode extends TNode {
-  constructor(createTime, parent, to = null) {
+  constructor(createTime, parent, perm, to = null) {
     super(createTime, parent);
+    this.perm = perm;
     this.to = to;
 
     // event data
@@ -194,10 +200,31 @@ class AutNode extends TNode {
   }
 
   setContent(div) {
+    div.style('white-space', 'nowrap');
     let header = "Aut";
-    div.append('span')
-      .attr('style', 'white-space: nowrap;')
-      .text(header);
+    if(!this.to) header += " implicit(" + this.tag + ")";
+    div.append('span').text(header);
+    div.append('br');
+    let s = "";
+    let printed = [];
+    for(let i = 0; i != this.perm.length; ++i) printed.push(false);
+    let anyPrinted = false;
+  	for(let i = 0; i != printed.length; ++i) {
+  		if(printed[i]) continue;
+  		if(this.perm[i] == i) continue;
+  		anyPrinted = true;
+  		let start = i;
+  		s += '(' + i;
+  		printed[i] = true;
+  		for(let next = this.perm[i]; next != start; next = this.perm[next]) {
+  			console.assert(!printed[next]);
+  			printed[next] = true;
+        s += ' ' + next;
+  		}
+  		s += ')';
+  	}
+  	if(!anyPrinted) s += "(0)";
+    div.append('span').text(s);
   }
 }
 
@@ -227,12 +254,18 @@ class Tree {
       this.nodes.set(t.id, t);
     }
 
-    addLeafAutomorphism(createTime, fromId, toId) {
+    addLeafAutomorphism(createTime, fromId, toId, perm) {
       let from = this.getNodeFromId(fromId);
       let to   = this.getNodeFromId(toId);
       console.assert(from, "From-id (%d) does not exist.", fromId);
       console.assert(to,     "To-id (%d) does not exist.", toId);
-      return from.addLeafAut(createTime, to);
+      return from.addLeafAut(createTime, to, perm);
+    }
+
+    addImplicitAutomorphism(createTime, id, tag, perm) {
+      let t = this.getNodeFromId(id);
+      console.assert(id, "Id (%d) does not exist.", id);
+      return t.addImplicitAut(createTime, tag, perm);
     }
 
     setSettings(settings, parseSettings) {
@@ -246,18 +279,19 @@ class Visualizer {
     this.rawData = data;
     this.parseSettings = parseSettings;
 
+    this.duration = 750;
+
     this.container.empty();
     this.compileInput();
     this.createInterface();
 
     // Set up graphics
     // =========================================================================
-    this.duration = 750;
     this.nodeRounding = 5;
 
     let width = this.width = this.container.width();
     let height = this.height = this.container.height();
-    let nodeSize = [100, 12*2*this.n];
+    let nodeSize = [100, 12*3*this.n];
     let zoom = d3.zoom().on("zoom", () => {
       this.svg.attr("transform", d3.event.transform);
     });
@@ -292,12 +326,12 @@ class Visualizer {
     this.updateSettings();
 
     // show input
-    let t = "Input:";
-    for(let e of this.data) {
-      t += "<br>" + JSON.stringify(e);
-    }
-    this.logTxt = $("<p></p>").html(t);
-    this.container.append(this.logTxt);
+    // let t = "Input:";
+    // for(let e of this.data) {
+    //   t += "<br>" + JSON.stringify(e);
+    // }
+    // this.logTxt = $("<p></p>").html(t);
+    // this.container.append(this.logTxt);
   }
 
   compileInput() {
@@ -361,7 +395,11 @@ class Visualizer {
           es.push(e);
           break;}
         case "automorphism_leaf": {
-          let t = this.tree.addLeafAutomorphism(es.length, e.from, e.to);
+          let t = this.tree.addLeafAutomorphism(es.length, e.from, e.to, e.perm);
+          es.push(e);
+          break;}
+        case "automorphism_implicit": {
+          let t = this.tree.addImplicitAutomorphism(es.length, e.id, e.tag, e.perm);
           es.push(e);
           break;}
       }
@@ -380,10 +418,11 @@ class Visualizer {
       .attr("type", "numeric")
       .attr("value", this.events.length + 1)
       .attr("style", "width: 50; text-align: right;")
-      ;
-
-
+      .on("keyup", () => {
+        if(d3.event.which === 13) $("#update").click();
+      });
     div.append('input')
+      .attr("id", "update")
       .attr("type", "button")
       .attr("value", "Update")
       .on("click", this.updateSettings.bind(this));
@@ -398,6 +437,7 @@ class Visualizer {
         this.updateSettings();
       });
     div.append('input')
+      .attr("id", "next")
       .attr("type", "button")
       .attr("value", "Next")
       .on("click", () => {
@@ -407,9 +447,43 @@ class Visualizer {
         $("#time").val(time);
         this.updateSettings();
       });
+    div.append('label').attr("for", "delay").text("Delay: ");
+    div.append('input')
+      .attr('id', 'delay')
+      .attr('required', true)
+      .attr('pattern', '[1-9][0-9]*')
+      .attr("type", "numeric")
+      .attr("value", this.duration)
+      .attr("style", "width: 50; text-align: right;");
+    div.append('input')
+      .attr("type", "button")
+      .attr("value", "Play")
+      .on("click", () => {
+        if(this.interval) return;
+        let delay = parseInt($("#delay").val());
+        if(!delay) return;
+        if(delay < this.duration) delay = this.duration;
+        $("#delay").val(delay);
+        this.interval = setInterval(() => {
+          let time = parseInt($("#time").val());
+          if(time > this.events.length) {
+            clearInterval(this.interval);
+            this.interval = null;
+          }
+          $("#next").click();
+        }, delay);
+      });
+      div.append('input')
+        .attr("type", "button")
+        .attr("value", "Stop")
+        .on("click", () => {
+          if(!this.interval) return;
+          clearInterval(this.interval);
+          this.interval = null;
+        });
 
-      this.log = d3.select(this.container.get(0))
-        .append("div").append("span").text("Final search tree.");
+    this.log = d3.select(this.container.get(0))
+      .append("div").append("span").text("Final search tree.");
   }
 
   updateSettings() {
@@ -424,17 +498,53 @@ class Visualizer {
       $("#time").val(time)
     }
     --time;
-    let msg = "";
-    if(time == this.events.length) {
-      msg = "Final search tree.";
-    } else {
+    let msg = (() => {
+      if(time == this.events.length)
+        return "Final search tree.";
+      let nodeIdToMsg = id => {
+        let t = this.tree.getNodeFromId(id);
+        let ancenstors = [];
+        for(let p = t; p.parent; p = p.parent)
+          ancenstors.push(p);
+        ancenstors.reverse();
+        let s = "T<";
+        if(ancenstors.length == 0) s += ">";
+        else {
+          s += ancenstors[0].indVertex;
+          for(let i = 1; i != ancenstors.length; ++i)
+            s += " " + ancenstors[i].indVertex;
+          s += ">";
+        }
+        s += " (id=" + t.id + ")";
+        return s;
+      }
       let event = this.events[time];
       switch(event.type) {
+        case "tree_create_node_begin":
+          return "Construction of node " + nodeIdToMsg(event.id) + " begins.";
+        case "tree_create_node_end":
+          return "Construction of node " + nodeIdToMsg(event.id) + " ends.";
+        case "refine_abort":
+          return "Construction of node " + nodeIdToMsg(event.id) + " is aborted during refinement.";
+        case "tree_destroy_node":
+          return "Node " + nodeIdToMsg(event.id) + " is deallocated.";
+        case "tree_before_descend":
+          return "Node " + nodeIdToMsg(event.id) + " is updated before creating/inspecting its children.";
+        case "tree_prune_node":
+          return "Node " + nodeIdToMsg(event.id) + " is pruned from the tree.";
+        case "canon_new_best":
+          return "Node " + nodeIdToMsg(event.id) + " is marked as the best candidate for a canonical ordering.";
+        case "canon_worse":
+          return "Node " + nodeIdToMsg(event.id) + " is a leaf, but worse than the current best leaf.";
+        case "automorphism_leaf":
+          return "An explicit automorphism is discovered by comparing nodes " + nodeIdToMsg(event.from) + " and " + nodeIdToMsg(event.to) + ".";
+        case "automorphism_implicit":
+          return "An implicit automorphism is discovered from node " + nodeIdToMsg(event.id) + ".";
         default:
           msg = "TODO: make pretty messge for event: " + JSON.stringify(event);
           break;
       }
-    }
+    })();
     this.log.text(msg);
     let settings = {
       'time': time
@@ -505,7 +615,14 @@ class Visualizer {
     enter
       .attr('class', d => d.data.cssClass)
       .attr("transform", function(d) {
-        return "translate(" + d.x0 + "," + d.y0 + ")";
+        let x = d.x0;
+        let y = d.y0;
+        if(x == undefined) {
+          // TODO: find out why this is needed
+          x = d.x;
+          y = d.y;
+        }
+        return "translate(" + x + "," + y + ")";
       });
     let shape = enter.append('rect')
       .attr('class', d => d.data.cssClass)
@@ -577,6 +694,7 @@ class Visualizer {
       .duration(this.duration)
       .attr("transform", function(d) {
         let p = d.parent;
+        if(!p) return; // TODO: hmm, should that happen?
         while(!p.data.visible) p = p.parent;
         return "translate(" + p.x + "," + p.y + ")";
       })
@@ -597,7 +715,14 @@ class Visualizer {
     enter
       .attr('class', d => d.data.cssEdgeClass)
       .attr('d', d => {
-        let s = {'x': d.x0, 'y': d.y0};
+        let x = d.x0;
+        let y = d.y0;
+        if(x == undefined) {
+          // TODO: find out why this is needed
+          x = d.x;
+          y = d.y;
+        }
+        let s = {'x': x, 'y': y};
         let t = {'x': d.parent.x0 + d.parent.data.width, 'y': d.parent.y0};
         return this.gfxDiagonal(s, t);
       });
@@ -637,8 +762,15 @@ class Visualizer {
     enter
       .attr('class', 'edge laedge')
       .attr('d', d => {
+        let x = d.x0;
+        let y = d.y0;
+        if(x == undefined) {
+          // TODO: find out why this is needed
+          x = d.x;
+          y = d.y;
+        }
         let s = {'x': d.data.to.x0 + d.data.to.width, 'y': d.data.to.y0};
-        let t = {'x': d.x0, 'y': d.y0};
+        let t = {'x': x, 'y': y};
         return this.gfxDiagonal(s, t);
       });
 
@@ -681,7 +813,7 @@ class Visualizer {
 
 let visualizer = null;
 $(document).ready(function() {
-  let body = d3.select("body");
+  let body = d3.select("body div");
   body.append("input")
     .attr("id", "logUpload")
     .attr("type", "button")
@@ -738,5 +870,8 @@ $(document).ready(function() {
 
   $.getJSON("log.json", log => {
     visualizer = new Visualizer($("#container"), log, getSettings());
+  }).fail(function(jqxhr, textStatus, error) {
+    let err = textStatus + ", " + error;
+    console.log("Loading default log failed:" + err);
   })
 });
