@@ -275,7 +275,7 @@ class Tree {
 
 class Visualizer {
   constructor(container, data, parseSettings) {
-    this.container = container;
+    this.container = d3.select(container);
     this.rawData = data;
     this.parseSettings = parseSettings;
 
@@ -289,13 +289,13 @@ class Visualizer {
     // =========================================================================
     this.nodeRounding = 5;
 
-    let width = this.width = this.container.width();
-    let height = this.height = this.container.height();
+    let width = this.width = $(this.container.node()).width();
+    let height = this.height = $(this.container.node()).height();
     let nodeSize = [100, 12*3*this.n];
     let zoom = d3.zoom().on("zoom", () => {
       this.svg.attr("transform", d3.event.transform);
     });
-    this.svg = d3.select(this.container.get(0))
+    this.svg = this.container
       .append("svg")
       .attr("style", "border: 1px solid;")
       .attr("width", width)
@@ -324,14 +324,6 @@ class Visualizer {
 
     this.updateGfx();
     this.updateSettings();
-
-    // show input
-    // let t = "Input:";
-    // for(let e of this.data) {
-    //   t += "<br>" + JSON.stringify(e);
-    // }
-    // this.logTxt = $("<p></p>").html(t);
-    // this.container.append(this.logTxt);
   }
 
   compileInput() {
@@ -408,8 +400,9 @@ class Visualizer {
   }
 
   createInterface() {
-    let div = d3.select(this.container.get(0))
-      .append("div");
+    let div = this.container
+      .append("div")
+      .style("padding-bottom", 5);
     div.append('label').attr("for", "time").text("Time: ");
     div.append('input')
       .attr('id', 'time')
@@ -432,6 +425,7 @@ class Visualizer {
       .on("click", () => {
         let time = parseInt($("#time").val());
         if(!time) return;
+        if(time == 1) return;
         --time;
         $("#time").val(time);
         this.updateSettings();
@@ -482,15 +476,15 @@ class Visualizer {
           this.interval = null;
         });
 
-    this.log = d3.select(this.container.get(0))
+    this.log = this.container
       .append("div").append("span").text("Final search tree.");
   }
 
   updateSettings() {
     let time = parseInt($("#time").val());
     if(!time) return;
-    if(time <= 0) {
-      time = 0;
+    if(time <= 1) {
+      time = 1;
       $("#time").val(time)
     }
     if(time > this.events.length + 1) {
@@ -640,7 +634,7 @@ class Visualizer {
     let div = fo.append('xhtml:div')
       .attr("id", d => d.data.key + "_l")
       // https://stackoverflow.com/questions/36776313/chrome-returns-0-for-offsetwidth-of-custom-html-element
-      .attr('style', 'display: inline-block;');
+      .style('display', 'inline-block');
     // Actual node content
     div.each(function(d) {
       d.data.setContent(d3.select(this));
@@ -666,9 +660,9 @@ class Visualizer {
       let h = d.data.height;
       d3.select(this)
         .attr('width', w + 2 * self.nodeRounding)
-        .attr('height', h)
+        .attr('height', h + 2 * self.nodeRounding)
         .attr('x', 0)
-        .attr('y', -h / 2);
+        .attr('y', -h / 2 - self.nodeRounding);
     });
 
     // Update
@@ -813,38 +807,40 @@ class Visualizer {
 
 let visualizer = null;
 $(document).ready(function() {
-  let body = d3.select("body div");
-  body.append("input")
+  let outer = d3.select("body div");
+  let div = outer.append("div");
+  let container = outer.append("div")
+    .style("width", "80%")
+    .style("height", "700px");
+  div.style("padding-bottom", 5);
+  div.append("input")
     .attr("id", "logUpload")
     .attr("type", "button")
     .attr("value", "Upload log");
-  body.append("input")
+  div.append("input")
     .attr("id", "logInput")
     .attr("type", "file");
-  body.append("input")
+  div.append("input")
     .attr("id", "logReload")
     .attr("type", "button")
     .attr("value", "Reload log");
-  body.append("label")
+  div.append("label")
     .text("Show 'destroy' events");
-  body.append("input")
+  div.append("input")
     .attr("id", "withDestroy")
     .attr("type", "checkbox");
-  body.append("label")
+  div.append("label")
     .text("Show 'before descend' events");
-  body.append("input")
+  div.append("input")
     .attr("id", "withBeforeDescend")
     .attr("type", "checkbox");
-  body.append("label")
+  div.append("label")
     .text("Destroy nodes");
-  body.append("input")
+  div.append("input")
     .attr("id", "destroyNodes")
     .attr("type", "checkbox");
-  body.append("div")
-    .attr("id", "container")
-    .style("width", "80%")
-    .style("height", "700px");
 
+  container = container.node();
 
   function getSettings() {
     return {
@@ -857,7 +853,7 @@ $(document).ready(function() {
     let reader = new FileReader();
     reader.onload = function(event) {
         var log = JSON.parse(event.target.result);
-        visualizer = new Visualizer($("#container"), log, getSettings());
+        visualizer = new Visualizer(container, log, getSettings());
     };
     let fs = $("#logInput").prop("files");
     if(fs.length == 0) return;
@@ -865,11 +861,11 @@ $(document).ready(function() {
   });
   $("#logReload").click(function() {
     if(!visualizer) return;
-    visualizer = new Visualizer($("#container"), visualizer.rawData, getSettings());
+    visualizer = new Visualizer(container, visualizer.rawData, getSettings());
   });
 
   $.getJSON("log.json", log => {
-    visualizer = new Visualizer($("#container"), log, getSettings());
+    visualizer = new Visualizer(container, log, getSettings());
   }).fail(function(jqxhr, textStatus, error) {
     let err = textStatus + ", " + error;
     console.log("Loading default log failed:" + err);
