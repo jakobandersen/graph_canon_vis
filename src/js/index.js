@@ -295,9 +295,7 @@ class Visualizer {
     let zoom = d3.zoom().on("zoom", () => {
       this.svg.attr("transform", d3.event.transform);
     });
-    this.svg = this.container
-      .append("svg")
-      .attr("style", "border: 1px solid;")
+    this.svg = this.svg
       .attr("width", width)
       .attr("height", height)
       .call(zoom)
@@ -403,6 +401,38 @@ class Visualizer {
     let div = this.container
       .append("div")
       .style("padding-bottom", 5);
+    this.log = this.container
+      .append("div").append("span").text("Final search tree.");
+    this.svg = this.container
+      .append("svg")
+      .attr("style", "border: 1px solid;");
+    let legend = this.container
+      .append("div")
+      .style("padding-top", 5);
+
+    let makeBox  = function(s, r, l) {
+      let rect = legend.append("svg")
+        .attr("width", "1.8ex").attr("height", "1.8ex")
+        .attr("class", "node " + s)
+        .append("rect")
+        .attr("width", "1.8ex").attr("height", "1.8ex");
+      if(r != null)
+        rect.attr("class", r)
+      legend.append("span")
+        .style("padding-left", 5)
+        .style("padding-right", 20)
+        .text(l);
+    };
+    makeBox("tnode", null, "Ordinary tree node")
+    makeBox("tnode", "selected", "Tree node of interest for current event")
+    makeBox("tnode", "pruned", "Pruned tree node")
+    makeBox("tnode", "refineAborted", "Tree node with aborted refinement")
+    makeBox("tnode", "canon", "Current best candidate leaf")
+    makeBox("tnode", "wasCanon", "Leaf that was once the best candidate")
+    makeBox("tnode", "canonWorse", "Leaf that was worse than the current best leaf at the time of construction")
+    makeBox("anode", null, "(With two edges) Explicit automorphism")
+    makeBox("anode", null, "(With one edge) Implicit automorphism")
+
     div.append('label').attr("for", "time").text("Time: ");
     div.append('input')
       .attr('id', 'time')
@@ -475,9 +505,6 @@ class Visualizer {
           clearInterval(this.interval);
           this.interval = null;
         });
-
-    this.log = this.container
-      .append("div").append("span").text("Final search tree.");
   }
 
   updateSettings() {
