@@ -274,14 +274,17 @@ class Tree {
 }
 
 class Visualizer {
+  dispose() {
+    this.container.html("");
+  }
+
   constructor(container, data, parseSettings) {
     this.container = d3.select(container);
     this.rawData = data;
     this.parseSettings = parseSettings;
 
-    this.duration = 750;
+    this.animationTime = 700;
 
-    this.container.empty();
     this.compileInput();
     this.createInterface();
 
@@ -471,23 +474,38 @@ class Visualizer {
         $("#time").val(time);
         this.updateSettings();
       });
+    div.append('label').attr("for", "animationTime").text("Animation Time: ");
+    div.append('input')
+      .attr('id', 'animationTime')
+      .attr('required', true)
+      .attr('pattern', '[1-9][0-9]*')
+      .attr("type", "numeric")
+      .attr("value", this.animationTime)
+      .attr("style", "width: 50; text-align: right;");
     div.append('label').attr("for", "delay").text("Delay: ");
     div.append('input')
       .attr('id', 'delay')
       .attr('required', true)
       .attr('pattern', '[1-9][0-9]*')
       .attr("type", "numeric")
-      .attr("value", this.duration)
+      .attr("value", 50)
       .attr("style", "width: 50; text-align: right;");
     div.append('input')
       .attr("type", "button")
       .attr("value", "Play")
       .on("click", () => {
         if(this.interval) return;
+        let animationTime = parseInt($("#animationTime").val());
+        if(!animationTime) return;
+        if(animationTime < 10) animationTime = 10;
+        this.animationTime = animationTime;
+        $("#animationTime").val(animationTime);
+
         let delay = parseInt($("#delay").val());
         if(!delay) return;
-        if(delay < this.duration) delay = this.duration;
+        if(delay < 10) delay = 10;
         $("#delay").val(delay);
+
         this.interval = setInterval(() => {
           let time = parseInt($("#time").val());
           if(time > this.events.length) {
@@ -495,7 +513,7 @@ class Visualizer {
             this.interval = null;
           }
           $("#next").click();
-        }, delay);
+        }, animationTime + delay);
       });
       div.append('input')
         .attr("type", "button")
@@ -695,7 +713,7 @@ class Visualizer {
     // Update
     // =========================================================================
     update.transition()
-  	  .duration(this.duration)
+  	  .duration(this.animationTime)
   	  .attr("transform", d => "translate(" + d.x + "," + d.y + ")");
     update.select("rect")
       .attr("class", d => {
@@ -712,7 +730,7 @@ class Visualizer {
     // Exit
     // =========================================================================
     exit.transition()
-      .duration(this.duration)
+      .duration(this.animationTime)
       .attr("transform", function(d) {
         let p = d.parent;
         if(!p) return; // TODO: hmm, should that happen?
@@ -751,7 +769,7 @@ class Visualizer {
     // Update
     // =========================================================================
     update.transition()
-      .duration(this.duration)
+      .duration(this.animationTime)
       .attr('d', d => {
         let s = {'x': d.x, 'y': d.y};
         let t = {'x': d.parent.x + d.parent.data.width, 'y': d.parent.y};
@@ -761,7 +779,7 @@ class Visualizer {
     // Exit
     // =========================================================================
     exit.transition()
-      .duration(this.duration)
+      .duration(this.animationTime)
       .attr('d', d => {
         let p = d.parent;
         while(!p.data.visible) p = p.parent;
@@ -798,7 +816,7 @@ class Visualizer {
     // Update
     // =========================================================================
     update.transition()
-      .duration(this.duration)
+      .duration(this.animationime)
       .attr('d', d => {
         let s = {'x': d.data.to.x + d.data.to.width, 'y': d.data.to.y};
         let t = {'x': d.x, 'y': d.y};
@@ -808,7 +826,7 @@ class Visualizer {
     // Exit
     // =========================================================================
     exit.transition()
-      .duration(this.duration)
+      .duration(this.animationime)
       .attr('d', d => {
         let p;
         p = d.data.to;
@@ -836,9 +854,16 @@ let visualizer = null;
 $(document).ready(function() {
   let outer = d3.select("body div");
   let div = outer.append("div");
-  let container = outer.append("div")
-    .style("width", "80%")
-    .style("height", "700px");
+  div.append("label")
+    .text("Server-side logs:");
+  let serverSideLogs = div.append("select")
+    .attr("id", "serverSide");
+  div.append("input")
+    .attr("id", "logLoad")
+    .attr("type", "button")
+    .attr("value", "Load log");
+
+  div = outer.append("div");
   div.style("padding-bottom", 5);
   div.append("input")
     .attr("id", "logUpload")
@@ -867,6 +892,10 @@ $(document).ready(function() {
     .attr("id", "destroyNodes")
     .attr("type", "checkbox");
 
+  let container = outer.append("div")
+      .style("width", "80%")
+      .style("height", "700px");
+
   container = container.node();
 
   function getSettings() {
@@ -876,10 +905,21 @@ $(document).ready(function() {
       destroyNodes: $("#destroyNodes").prop("checked"),
     }
   };
+  $("#logLoad").click(function() {
+    let f = serverSideLogs.node().options[serverSideLogs.node().selectedIndex].value;
+    $.getJSON("logs/" + f + ".json", log => {
+      if(visualizer) visualizer.dispose();
+      visualizer = new Visualizer(container, log, getSettings());
+    }).fail(function(jqxhr, textStatus, error) {
+      let err = textStatus + ", " + error;
+      console.log("Loading of server-side log 'logs/" + f + ".json' failed:" + err);
+    });
+  });
   $("#logUpload").click(function() {
     let reader = new FileReader();
     reader.onload = function(event) {
-        var log = JSON.parse(event.target.result);
+        let log = JSON.parse(event.target.result);
+        if(visualizer) visualizer.dispose();
         visualizer = new Visualizer(container, log, getSettings());
     };
     let fs = $("#logInput").prop("files");
@@ -888,13 +928,20 @@ $(document).ready(function() {
   });
   $("#logReload").click(function() {
     if(!visualizer) return;
-    visualizer = new Visualizer(container, visualizer.rawData, getSettings());
+    let log = visualizer.rawData;
+    visualizer.dispose();
+    visualizer = new Visualizer(container, log, getSettings());
   });
 
-  $.getJSON("log.json", log => {
-    visualizer = new Visualizer(container, log, getSettings());
+  $.getJSON("logs.json", list => {
+    for(let l of list) {
+      serverSideLogs.append("option")
+        .attr("value", l.file)
+        .text(l.name);
+    }
+    $("#logLoad").click();
   }).fail(function(jqxhr, textStatus, error) {
     let err = textStatus + ", " + error;
-    console.log("Loading default log failed:" + err);
-  })
+    console.log("Loading list of server-side logs failed:" + err);
+  });
 });

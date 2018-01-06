@@ -1,5 +1,5 @@
 [
-{"type":"graph","graph":{"n":10}},
+{"type":"graph","graph":{"n":10,"edges":[{"src":0,"tar":2},{"src":0,"tar":3},{"src":1,"tar":4},{"src":1,"tar":5},{"src":2,"tar":6},{"src":2,"tar":9},{"src":3,"tar":7},{"src":3,"tar":8},{"src":4,"tar":6},{"src":4,"tar":8},{"src":5,"tar":7},{"src":5,"tar":9},{"src":6,"tar":8},{"src":7,"tar":9}]}},
 {"type":"tree_create_node_begin","id":0,"parent":null},
 {"type":"tree_create_node_end","id":0,"target_cell":0,"pi":{"cells":[0,2,6],"elements":[0,1,9,8,7,6,5,4,3,2]}},
 {"type":"tree_before_descend","id":0},
