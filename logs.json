@@ -1,0 +1,6 @@
+[
+	{"name":"Default BFSExp","file":"default_bfs"},
+	{"name":"Default DFS","file":"default_dfs"},
+	{"name":"latin-6 BFSExp","file":"latin-6_bfs"},
+	{"name":"latin-6 DFS","file":"latin-6_dfs"}
+]

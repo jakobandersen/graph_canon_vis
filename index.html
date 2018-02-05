@@ -1,0 +1,68 @@
+<html>
+<head>
+  <script src="lib/jquery/dist/jquery.js"></script>
+  <script src="lib/d3/d3.js"></script>
+  <script src="js/index.js"></script>
+  <style>
+    .node rect {
+      stroke-width: 1px;
+    }
+    .node text {
+      font: 12px sans-serif;
+    }
+
+    .tnode rect {
+      fill: lightsteelblue;
+      stroke: steelblue;
+    }
+    .anode rect {
+      fill: darkgray;
+      stroke: gray;
+    }
+
+    .node rect.selected {
+      stroke: black;
+      stroke-width: 2px;
+    }
+    .tnode rect.pruned {
+      fill: violet;
+      stroke: darkviolet;
+    }
+    .tnode rect.refineAborted {
+      fill: red;
+      stroke: darkred;
+    }
+    .tnode rect.canon {
+      fill: green;
+      stroke: darkgreen;
+    }
+    .tnode rect.wasCanon {
+      fill: lightgreen;
+      stroke: green;
+    }
+    .tnode rect.canonWorse {
+      fill: peru;
+      stroke: saddlebrown;
+    }
+
+    .edge {
+      fill: none;
+      stroke: #555;
+      stroke-width: 2px;
+    }
+
+    input:invalid {
+      border: 1px dashed red;
+    }
+
+    input:valid {
+      border: 1px solid black;
+    }
+</style>
+</head>
+<body>
+  <div style="padding-left: 10%;">
+    <h1>GraphCanon Visualizer</h1>
+</div>
+</body>
+</html>
