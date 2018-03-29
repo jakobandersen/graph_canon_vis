@@ -756,11 +756,6 @@ class Visualizer {
       .attr('d', d => {
         let x = d.x0;
         let y = d.y0;
-        if(x == undefined) {
-          // TODO: find out why this is needed
-          x = d.x;
-          y = d.y;
-        }
         let s = {'x': x, 'y': y};
         let t = {'x': d.parent.x0 + d.parent.data.width, 'y': d.parent.y0};
         return this.gfxDiagonal(s, t);
@@ -803,11 +798,6 @@ class Visualizer {
       .attr('d', d => {
         let x = d.x0;
         let y = d.y0;
-        if(x == undefined) {
-          // TODO: find out why this is needed
-          x = d.x;
-          y = d.y;
-        }
         let s = {'x': d.data.to.x0 + d.data.to.width, 'y': d.data.to.y0};
         let t = {'x': x, 'y': y};
         return this.gfxDiagonal(s, t);
@@ -816,7 +806,7 @@ class Visualizer {
     // Update
     // =========================================================================
     update.transition()
-      .duration(this.animationime)
+      .duration(this.animationTime)
       .attr('d', d => {
         let s = {'x': d.data.to.x + d.data.to.width, 'y': d.data.to.y};
         let t = {'x': d.x, 'y': d.y};
@@ -826,7 +816,7 @@ class Visualizer {
     // Exit
     // =========================================================================
     exit.transition()
-      .duration(this.animationime)
+      .duration(this.animationTime)
       .attr('d', d => {
         let p;
         p = d.data.to;
