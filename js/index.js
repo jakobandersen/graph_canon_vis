@@ -86,6 +86,16 @@ class TreeNode extends TNode {
     this.createEndTime = createEndTime;
     this.targetCell = targetCell;
     this.pi = pi;
+    this.cellOf = [];
+    for(let i = 0; i != this.pi.elements.length; ++i)
+      this.cellOf.push(0);
+    for(let iCell = 0; iCell != this.pi.cells.length; ++iCell) {
+      let cell = this.pi.cells[iCell];
+      let cellEnd = iCell + 1 == this.pi.cells.length
+        ? this.pi.elements.length : this.pi.cells[iCell + 1];
+      for(let i = cell; i != cellEnd; ++i)
+        this.cellOf[this.pi.elements[i]] = cell;
+    }
   }
 
   setRefineAbort(time) {
@@ -284,16 +294,16 @@ class Visualizer {
     this.parseSettings = parseSettings;
 
     this.animationTime = 700;
+    this.nodeRounding = 5;
+    let width = this.width = $(this.container.node()).width();
+    let height = this.height = $(this.container.node()).height();
 
     this.compileInput();
     this.createInterface();
+    this.createGraphVis();
 
     // Set up graphics
     // =========================================================================
-    this.nodeRounding = 5;
-
-    let width = this.width = $(this.container.node()).width();
-    let height = this.height = $(this.container.node()).height();
     let nodeSize = [100, 12*3*this.n];
     let zoom = d3.zoom().on("zoom", () => {
       this.svg.attr("transform", d3.event.transform);
@@ -327,6 +337,130 @@ class Visualizer {
     this.updateSettings();
   }
 
+  createGraphVis() {
+    let distance = this.parseSettings.graphVertexDistance;
+    let width = this.parseSettings.graphWidth;
+    let height = this.parseSettings.graphHeight;
+    let tick = () => {
+      for(let g of this.graphVis.graphs) {
+        g.selectAll('line')
+          .attr("x1", (d) => d.source.x)
+          .attr("y1", (d) => d.source.y)
+          .attr("x2", (d) => d.target.x)
+          .attr("y2", (d) => d.target.y)
+          ;
+        g.selectAll('g')
+          .attr("transform", (d) => {return "translate(" + d.x + ", " + d.y + ")"})
+          ;
+      }
+    };
+    this.graphVis = {
+      graphs: new Set(),
+      width: width,
+      height: height,
+      radius: 15,
+      dragStarted: (d) => {
+        if(!d3.event.active)
+          this.graphVis.simulation.alphaTarget(0.3).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+      },
+      dragged: (d) => {
+        d.fx = d3.event.x;
+        d.fy = d3.event.y;
+      },
+      dragEnded: (d) => {
+        if(!d3.event.active)
+          this.graphVis.simulation.alphaTarget(0);
+        d.fx = null;
+        d.fy = null;
+      },
+      simulation: d3.forceSimulation(this.g.vertices)
+        .force("link", d3.forceLink(this.g.edges).distance((d) => distance))
+        .force("charge", d3.forceManyBody())
+        .force("center", d3.forceCenter(width / 2, height / 2))
+        .on("tick", tick),
+    };
+  }
+
+  toogleTreeNode(d) {
+    if(d.pi == undefined) return;
+    if(d.graphVisWindow != undefined) {
+      this.graphVis.graphs.delete(d.graphVisSvg);
+      d.graphVisWindow.remove();
+      d.graphVisWindow = undefined;
+      d.graphVisSvg = undefined;
+      return;
+    }
+    let cellOf = d.cellOf;
+
+    let window = this.container
+      .append('div')
+      .style("width", this.graphVis.width)
+      .style('display', 'inline-block')
+      .style('border', '1px')
+      .style('border-style', 'solid')
+      .style('background-color', 'white')
+      .style('position', 'absolute')
+      .style("left", (d3.event.pageX - this.graphVis.width / 2) + "px")
+      .style("top", (d3.event.pageY + 50) + "px");
+    let header = window
+      .append('div')
+      .style('background-color', 'lightsteelblue');
+    $(window.node()).draggable({ handle: header.node(), cursor: "grab" });
+
+    header
+      .append('span')
+      .text('Id ' + d.id)
+      .style('pointer-eventts', 'none')
+      .style('padding-left', '2px');
+    header
+      .append('span')
+      .style('float', 'right')
+      .html('&times;')
+      .style('padding-right', '2px')
+      .style('cursor', 'pointer')
+      .on('click', () => {
+        this.toogleTreeNode(d);
+      });
+    let svg = window
+      .append("svg")
+      .attr("width", this.graphVis.width)
+      .attr("height", this.graphVis.height);
+    svg.selectAll('line')
+      .data(this.g.edges)
+      .enter()
+      .append("line")
+      .style("stroke", "black")
+      .style("stroke-width", 1)
+      ;
+    let nodes = svg.selectAll('g')
+      .data(this.g.vertices)
+      .enter()
+      .append('g')
+      .call(d3.drag()
+        .on("start", this.graphVis.dragStarted)
+        .on("drag", this.graphVis.dragged)
+        .on("end", this.graphVis.dragEnded)
+      );
+    nodes
+      .append("circle")
+      .attr("r", this.graphVis.radius)
+      .style("stroke", "black")
+      .style("fill", (d) => this.cellColours[cellOf[d.index]])
+      ;
+    nodes
+      .append('text')
+      .attr("text-anchor", "middle")
+      .attr("dominant-baseline", "central")
+      .style("pointer-events", "none")
+      .text((d) => d.index)
+    this.graphVis.graphs.add(svg);
+    this.graphVis.simulation.restart();
+    d.graphVisWindow = window;
+    d.graphVisSvg = svg;
+  }
+
   compileInput() {
     this.tree = new Tree();
     let es = this.events = [];
@@ -342,6 +476,13 @@ class Visualizer {
       switch(e.type) {
         case "graph":
           this.n = e.graph.n;
+          let vertices = [];
+          for(let i = 0; i != this.n; ++i)
+            vertices.push({});
+          let edges = [];
+          for(let edge of e.graph.edges)
+            edges.push({source: edge.src, target: edge.tar})
+          this.g = {vertices: vertices, edges: edges};
           break;
         case "tree_create_node_begin": {
           let t = new TreeNode(es.length, e.id, e.ind_vertex);
@@ -410,6 +551,9 @@ class Visualizer {
       .append("svg")
       .attr("style", "border: 1px solid;");
     let legend = this.container
+      .append("div")
+      .style("padding-top", 5);
+    let colours = this.container
       .append("div")
       .style("padding-top", 5);
 
@@ -523,6 +667,26 @@ class Visualizer {
           clearInterval(this.interval);
           this.interval = null;
         });
+
+      // colours for ordered partitions
+      colours
+        .append('div').append('span').text('Partition colours:')
+      let p = colours.append('div')
+      this.cellColours = [];
+      for(let i = 0; i != this.n; ++i) {
+        let c = 'hsl(' + (i*360/this.n) + ', 100%, 50%)';
+        this.cellColours.push(c);
+        p.append('span').text(i)
+          .style('display', 'inline-block')
+          .style('width', 100/this.n + "%")
+          .style('box-sizing', 'border-box')
+          .style('height', "3ex")
+          .style('border', '1px')
+          .style('border-style', 'solid')
+          .style('text-align', 'center')
+          .style('background-color', c)
+          ;
+      }
   }
 
   updateSettings() {
@@ -666,7 +830,9 @@ class Visualizer {
     let shape = enter.append('rect')
       .attr('class', d => d.data.cssClass)
       .attr('rx', this.nodeRounding)
-      .attr('ry', this.nodeRounding);
+      .attr('ry', this.nodeRounding)
+      .on('click', (d) => this.toogleTreeNode(d.data))
+      ;
     enter.filter(d => d.data.parent != null)
       .append('text')
       .attr('x', -2)
@@ -677,6 +843,7 @@ class Visualizer {
     // -------------------------------------------------------------------------
     let fo = enter.append('foreignObject');
     let div = fo.append('xhtml:div')
+      .style('pointer-events', 'none')
       .attr("id", d => d.data.key + "_l")
       // https://stackoverflow.com/questions/36776313/chrome-returns-0-for-offsetwidth-of-custom-html-element
       .style('display', 'inline-block');
@@ -756,11 +923,6 @@ class Visualizer {
       .attr('d', d => {
         let x = d.x0;
         let y = d.y0;
-        if(x == undefined) {
-          // TODO: find out why this is needed
-          x = d.x;
-          y = d.y;
-        }
         let s = {'x': x, 'y': y};
         let t = {'x': d.parent.x0 + d.parent.data.width, 'y': d.parent.y0};
         return this.gfxDiagonal(s, t);
@@ -803,11 +965,6 @@ class Visualizer {
       .attr('d', d => {
         let x = d.x0;
         let y = d.y0;
-        if(x == undefined) {
-          // TODO: find out why this is needed
-          x = d.x;
-          y = d.y;
-        }
         let s = {'x': d.data.to.x0 + d.data.to.width, 'y': d.data.to.y0};
         let t = {'x': x, 'y': y};
         return this.gfxDiagonal(s, t);
@@ -816,7 +973,7 @@ class Visualizer {
     // Update
     // =========================================================================
     update.transition()
-      .duration(this.animationime)
+      .duration(this.animationTime)
       .attr('d', d => {
         let s = {'x': d.data.to.x + d.data.to.width, 'y': d.data.to.y};
         let t = {'x': d.x, 'y': d.y};
@@ -826,7 +983,7 @@ class Visualizer {
     // Exit
     // =========================================================================
     exit.transition()
-      .duration(this.animationime)
+      .duration(this.animationTime)
       .attr('d', d => {
         let p;
         p = d.data.to;
@@ -891,6 +1048,41 @@ $(document).ready(function() {
   div.append("input")
     .attr("id", "destroyNodes")
     .attr("type", "checkbox");
+  div.append("label")
+    .text("Graph vertex distance");
+  div.append("input")
+    .attr("id", "graphVertexDistance")
+    .attr('required', true)
+    .attr('pattern', '[1-9][0-9]*')
+    .attr("type", "numeric")
+    .attr("value", 100)
+    .style("width", 40)
+    .style("text-align", "right")
+    .style("margin-left", "2px");
+    div.append("label")
+      .text("Graph width")
+      .style("margin-left", "2px");
+    div.append("input")
+      .attr("id", "graphWidth")
+      .attr('required', true)
+      .attr('pattern', '[1-9][0-9]*')
+      .attr("type", "numeric")
+      .attr("value", parseInt($(outer.node()).width()*0.8/3))
+      .style("width", 40)
+      .style("text-align", "right")
+      .style("margin-left", "2px");
+    div.append("label")
+      .text("Graph height")
+      .style("margin-left", "2px");
+    div.append("input")
+      .attr("id", "graphHeight")
+      .attr('required', true)
+      .attr('pattern', '[1-9][0-9]*')
+      .attr("type", "numeric")
+      .attr("value", 350)
+      .style("width", 40)
+      .style("text-align", "right")
+      .style("margin-left", "2px");
 
   let container = outer.append("div")
       .style("width", "80%")
@@ -899,10 +1091,22 @@ $(document).ready(function() {
   container = container.node();
 
   function getSettings() {
+    let dist = parseInt($("#graphVertexDistance").val());
+    let width = parseInt($("#graphWidth").val());
+    let height = parseInt($("#graphHeight").val());
+    if(dist < 20) dist = 20;
+    if(width < 50) width = 50;
+    if(height < 50) height = 50;
+    $("#graphVertexDistance").val(dist);
+    $("#graphWidth").val(width);
+    $("#graphHeight").val(height);
     return {
       withDestroy: $("#withDestroy").prop("checked"),
       withBeforeDescend: $("#withBeforeDescend").prop("checked"),
       destroyNodes: $("#destroyNodes").prop("checked"),
+      graphVertexDistance: dist,
+      graphWidth: width,
+      graphHeight: height,
     }
   };
   $("#logLoad").click(function() {
