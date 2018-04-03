@@ -309,7 +309,7 @@ class Visualizer {
       this.svg.attr("transform", d3.event.transform);
     });
     this.svg = this.svg
-      .attr("width", width)
+      .attr("width", "100%")
       .attr("height", height)
       .call(zoom)
       .append("g");
