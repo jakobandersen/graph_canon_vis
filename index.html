@@ -1,9 +1,6 @@
 <html>
 <head>
-  <script src="lib/jquery/dist/jquery.js"></script>
-  <script src="lib/jquery-ui/jquery-ui.js"></script>
-  <script src="lib/d3/d3.js"></script>
-  <script src="js/index.js"></script>
+  <script src="bundle.js"></script>
   <style>
     .node rect {
       stroke-width: 1px;
@@ -15,7 +12,6 @@
     .tnode rect {
       fill: lightsteelblue;
       stroke: steelblue;
-      cursor: pointer;
     }
     .anode rect {
       fill: darkgray;
@@ -51,6 +47,10 @@
       fill: none;
       stroke: #555;
       stroke-width: 2px;
+    }
+
+    .toggle {
+      cursor: pointer;
     }
 
     input:invalid {
