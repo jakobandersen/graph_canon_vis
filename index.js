@@ -82,7 +82,7 @@ class TreeNode extends TNode {
     this.visible = false;
     this.children = [];
     this.key = "t-" + this.id;
-    this.cssClass = "node tnode";
+    this.cssClass = "node tnode toggle";
     this.cssEdgeClass = "edge tedge";
   }
 
@@ -387,7 +387,7 @@ class Visualizer {
     };
   }
 
-  toogleTreeNode(d) {
+  toggleTreeNode(d) {
     if(d.pi == undefined) return;
     if(d.graphVisWindow != undefined) {
       this.graphVis.graphs.delete(d.graphVisSvg);
@@ -425,7 +425,7 @@ class Visualizer {
       .style('padding-right', '2px')
       .style('cursor', 'pointer')
       .on('click', () => {
-        this.toogleTreeNode(d);
+        this.toggleTreeNode(d);
       });
     let svg = window
       .append("svg")
@@ -835,7 +835,7 @@ class Visualizer {
       .attr('class', d => d.data.cssClass)
       .attr('rx', this.nodeRounding)
       .attr('ry', this.nodeRounding)
-      .on('click', (d) => this.toogleTreeNode(d.data))
+      .on('click', (d) => this.toggleTreeNode(d.data))
       ;
     enter.filter(d => d.data.parent != null)
       .append('text')
@@ -847,10 +847,12 @@ class Visualizer {
     // -------------------------------------------------------------------------
     let fo = enter.append('foreignObject');
     let div = fo.append('xhtml:div')
-      .style('pointer-events', 'none')
       .attr("id", d => d.data.key + "_l")
       // https://stackoverflow.com/questions/36776313/chrome-returns-0-for-offsetwidth-of-custom-html-element
-      .style('display', 'inline-block');
+      .style('display', 'inline-block')
+      .on('click', (d) => this.toggleTreeNode(d.data))
+      .attr('class', 'toggle')
+      ;
     // Actual node content
     div.each(function(d) {
       d.data.setContent(d3.select(this));
@@ -1015,8 +1017,17 @@ let visualizer = null;
 $(document).ready(function() {
   let outer = d3.select("body div");
   let div = outer.append("div");
+  div.append('p')
+    .style("width", "80%")
+    .text(`
+		Upload a log or load an example from the server.
+		When log settings (i.e., which events to include and graph settings),
+		has been changed, load a new log or use "Reload log" to apply them.
+		Click on tree nodes to view the graph with colouring corresponding to the
+		ordered partition of that tree node.
+	`);
   div.append("label")
-    .text("Server-side logs:");
+    .text("Server-side logs: ");
   let serverSideLogs = div.append("select")
     .attr("id", "serverSide");
   div.append("input")
@@ -1027,12 +1038,12 @@ $(document).ready(function() {
   div = outer.append("div");
   div.style("padding-bottom", 5);
   div.append("input")
+    .attr("id", "logInput")
+    .attr("type", "file");
+  div.append("input")
     .attr("id", "logUpload")
     .attr("type", "button")
     .attr("value", "Upload log");
-  div.append("input")
-    .attr("id", "logInput")
-    .attr("type", "file");
   div.append("input")
     .attr("id", "logReload")
     .attr("type", "button")
