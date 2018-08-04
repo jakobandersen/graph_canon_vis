@@ -1,1 +1,4 @@
-src/lib
+*.swp
+src/dist
+src/node_modules
+

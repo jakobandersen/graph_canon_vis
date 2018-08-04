@@ -1,0 +1,28 @@
+{
+  "name": "graph_canon_vis",
+  "version": "1.0.0",
+  "description": "A visualizer for graph canonicalization algorithms.",
+  "homepage": "https://github.com/jakobandersen/graph_canon_vis",
+  "repository": "github:jakobandersen/graph_canon_vis",
+  "main": "",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "webpack --progress -p --config webpack.prod.js",
+    "watch": "webpack --progress --watch",
+    "start": "webpack-dev-server --open --config webpack.dev.js"
+  },
+  "author": "Jakob Lykke Andersen <jlandersen@imada.sdu.dk> (http://imada.sdu.dk/~jlandersen)",
+  "license": "GPL-3.0",
+  "dependencies": {
+    "d3": "^5.5.0",
+    "jquery": "^3.3.1",
+    "jquery-ui-bundle": "^1.12.1-migrate"
+  },
+  "devDependencies": {
+    "copy-webpack-plugin": "^4.5.2",
+    "webpack": "^4.16.4",
+    "webpack-cli": "^3.1.0",
+    "webpack-dev-server": "^3.1.5",
+    "webpack-merge": "^4.1.4"
+  }
+}

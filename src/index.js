@@ -1,5 +1,9 @@
 "strict";
 
+import $ from 'jquery';
+import 'jquery-ui-bundle';
+import * as d3 from "d3";
+
 class TNode {
   constructor(createTime, parent) {
     this.parent = parent;
