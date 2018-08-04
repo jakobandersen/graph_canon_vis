@@ -1,4 +1,4 @@
 *.swp
-src/dist
-src/node_modules
+dist
+node_modules
 
