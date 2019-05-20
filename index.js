@@ -133,8 +133,10 @@ class TreeNode extends TNode {
   setContent(div) {
     div.style('white-space', 'nowrap');
     let header = "ID: " + this.id;
-    if(this.targetCell != null)
-      header += ", Tar: " + this.targetCell;
+    if(this.targetCell != null) {
+      header += ", Tar: ";
+      header += this.targetCell;
+    }
     div.append('span').text(header);
     if(this.pi != null) {
       let pi = "(";
@@ -144,7 +146,8 @@ class TreeNode extends TNode {
           ? this.pi.elements.length : this.pi.cells[iCell + 1];
         pi += this.pi.elements[cell];
         for(let i = cell + 1; i < cellEnd; ++i) {
-          pi += " " + this.pi.elements[i];
+          pi += " ";
+          pi += this.pi.elements[i];
         }
         if(cellEnd != this.pi.elements.length) {
           pi += " | ";
@@ -152,9 +155,10 @@ class TreeNode extends TNode {
       }
       pi += ")";
       div.append('br');
-      div.append('span')
-        .text(pi);
+      div.append('span').text(pi);
+      return pi;
     }
+    return "";
   }
 
   addChild(t) {
@@ -216,7 +220,11 @@ class AutNode extends TNode {
   setContent(div) {
     div.style('white-space', 'nowrap');
     let header = "Aut";
-    if(!this.to) header += " implicit (tag = " + this.tag + ")";
+    if(!this.to) {
+        header += " implicit (tag = ";
+        header += this.tag;
+        header += ")";
+    }
     div.append('span').text(header);
     div.append('br');
     let s = "";
@@ -228,17 +236,20 @@ class AutNode extends TNode {
   		if(this.perm[i] == i) continue;
   		anyPrinted = true;
   		let start = i;
-  		s += '(' + i;
+  		s += '(';
+      s += i;
   		printed[i] = true;
   		for(let next = this.perm[i]; next != start; next = this.perm[next]) {
   			console.assert(!printed[next]);
   			printed[next] = true;
-        s += ' ' + next;
+        s += ' ';
+        s += next;
   		}
   		s += ')';
   	}
   	if(!anyPrinted) s += "(0)";
     div.append('span').text(s);
+    return s;
   }
 }
 
@@ -301,6 +312,12 @@ class Visualizer {
     this.nodeRounding = 5;
     let width = this.width = $(this.container.node()).width();
     let height = this.height = $(this.container.node()).height();
+
+    // hax to get text width without rendering, from https://stackoverflow.com/questions/31305071/measuring-text-width-height-without-rendering
+    let canvas = this.container.append('canvas').style("display", "none");
+    let span = this.container.append('span').style("display", "none");
+    this.context = canvas.node().getContext("2d");
+    this.context.font = window.getComputedStyle(span.node()).font;
 
     this.compileInput();
     this.createInterface();
@@ -907,14 +924,15 @@ class Visualizer {
       ;
     // Actual node content
     div.each(function(d) {
-      d.data.setContent(d3.select(this));
+      d.data.longText = d.data.setContent(d3.select(this));
     });
     // Set sizes for the foreginObject and the node shape
     // -------------------------------------------------------------------------
-    fo.each(function(d) {
+    fo.each(d => {
       let div = $("#" + d.data.key + "_l");
-      d.data.width = div.outerWidth();
-      d.data.height = div.outerHeight();
+      d.data.width = this.context.measureText(d.data.longText).width;
+      //d.data.width = div.outerWidth();
+      d.data.height = 38;
     });
     fo.each(function(d) {
       let w = d.data.width;
