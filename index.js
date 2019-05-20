@@ -132,7 +132,7 @@ class TreeNode extends TNode {
 
   setContent(div) {
     div.style('white-space', 'nowrap');
-    let header = "Id: " + this.id;
+    let header = "ID: " + this.id;
     if(this.targetCell != null)
       header += ", Tar: " + this.targetCell;
     div.append('span').text(header);
@@ -216,7 +216,7 @@ class AutNode extends TNode {
   setContent(div) {
     div.style('white-space', 'nowrap');
     let header = "Aut";
-    if(!this.to) header += " implicit(" + this.tag + ")";
+    if(!this.to) header += " implicit (tag = " + this.tag + ")";
     div.append('span').text(header);
     div.append('br');
     let s = "";
@@ -546,11 +546,20 @@ class Visualizer {
   }
 
   createInterface() {
-    let div = this.container
-      .append("div")
-      .style("padding-bottom", 5);
-    this.log = this.container
-      .append("div").append("span").text("Final search tree.");
+    this.container.append("hr");
+    let div = this.container.append("div");
+    div.append("p").text(`
+      Click on tree nodes to view the graph with colouring corresponding to the
+		  ordered partition of that tree node.`);
+
+    let logDiv = this.container.append("div")
+      .style("margin", "1ex 0 1ex 0")
+    logDiv.append("label")
+      .style("margin-right", "2ex")
+      .style("font-weight", "bold")
+      .text("Log message:");
+    this.log = logDiv.append("span").text("Final search tree.");
+
     this.svg = this.container
       .append("svg")
       .attr("style", "border: 1px solid;");
@@ -574,73 +583,56 @@ class Visualizer {
         .style("padding-right", 20)
         .text(l);
     };
-    makeBox("tnode", null, "Ordinary tree node")
-    makeBox("tnode", "selected", "Tree node of interest for current event")
-    makeBox("tnode", "pruned", "Pruned tree node")
-    makeBox("tnode", "refineAborted", "Tree node with aborted refinement")
-    makeBox("tnode", "canon", "Current best candidate leaf")
-    makeBox("tnode", "wasCanon", "Leaf that was once the best candidate")
-    makeBox("tnode", "canonWorse", "Leaf that was worse than the current best leaf at the time of construction")
-    makeBox("anode", null, "(With two edges) Explicit automorphism")
-    makeBox("anode", null, "(With one edge) Implicit automorphism")
+    makeBox("tnode", null, "Ordinary tree node");
+    makeBox("tnode", "selected", "Tree node of interest for current event");
+    makeBox("tnode", "pruned", "Pruned tree node");
+    makeBox("tnode", "refineAborted", "Tree node with aborted refinement");
+    makeBox("tnode", "canon", "Current best candidate leaf");
+    makeBox("tnode", "wasCanon", "Leaf that was once the best candidate");
+    makeBox("tnode", "canonWorse", "Leaf that was worse than the current best leaf at the time of construction");
+    makeBox("anode", null, "(With two edges) Explicit automorphism");
+    makeBox("anode", null, "(With one edge) Implicit automorphism");
 
-    div.append('label').attr("for", "time").text("Time: ");
-    div.append('input')
-      .attr('id', 'time')
-      .attr('required', true)
-      .attr('pattern', '[1-9][0-9]*')
-      .attr("type", "numeric")
-      .attr("value", this.events.length + 1)
-      .attr("style", "width: 50; text-align: right;")
-      .on("keyup", () => {
-        if(d3.event.which === 13) $("#update").click();
-      });
-    div.append('input')
-      .attr("id", "update")
-      .attr("type", "button")
-      .attr("value", "Update")
-      .on("click", this.updateSettings.bind(this));
-    div.append('input')
-      .attr("type", "button")
-      .attr("value", "Prev")
-      .on("click", () => {
-        let time = parseInt($("#time").val());
-        if(!time) return;
-        if(time == 1) return;
-        --time;
-        $("#time").val(time);
-        this.updateSettings();
-      });
-    div.append('input')
-      .attr("id", "next")
-      .attr("type", "button")
-      .attr("value", "Next")
-      .on("click", () => {
-        let time = parseInt($("#time").val());
-        if(!time) return;
-        ++time;
-        $("#time").val(time);
-        this.updateSettings();
-      });
-    div.append('label').attr("for", "animationTime").text("Animation Time: ");
-    div.append('input')
+    let settingsList = div.append("ul")
+      .style("width", "25em")
+      .style("column-count", 2);
+    let item = settingsList.append("li");
+    item.append('label')
+      .style("margin-right", "2ex")
+      .attr("for", "animationTime")
+      .text("Animation time:");
+    item.append('input')
       .attr('id', 'animationTime')
       .attr('required', true)
       .attr('pattern', '[1-9][0-9]*')
       .attr("type", "numeric")
       .attr("value", this.animationTime)
-      .attr("style", "width: 50; text-align: right;");
-    div.append('label').attr("for", "delay").text("Delay: ");
-    div.append('input')
+      .style("width", "50px")
+      .style("text-align", "right")
+      .style("padding-right", "0.5ex");
+
+    item = settingsList.append("li");
+    item.append('label')
+      .style("margin-right", "2ex")
+      .attr("for", "delay")
+      .text("Delay:");
+    item.append('input')
       .attr('id', 'delay')
       .attr('required', true)
       .attr('pattern', '[1-9][0-9]*')
       .attr("type", "numeric")
       .attr("value", 50)
-      .attr("style", "width: 50; text-align: right;");
-    div.append('input')
+      .style("width", "50px")
+      .style("text-align", "right")
+      .style("padding-right", "0.5ex");
+
+
+
+
+    div.append('button')
       .attr("type", "button")
-      .attr("value", "Play")
+      .style("cursor", "pointer")
+      .html("&#9658;")
       .on("click", () => {
         if(this.interval) return;
         let animationTime = parseInt($("#animationTime").val());
@@ -663,34 +655,94 @@ class Visualizer {
           $("#next").click();
         }, animationTime + delay);
       });
-      div.append('input')
-        .attr("type", "button")
-        .attr("value", "Stop")
-        .on("click", () => {
-          if(!this.interval) return;
-          clearInterval(this.interval);
-          this.interval = null;
-        });
+    div.append('button')
+      .attr("type", "button")
+      .style("cursor", "pointer")
+      .html("&#9632;")
+      .on("click", () => {
+        if(!this.interval) return;
+        clearInterval(this.interval);
+        this.interval = null;
+      });
 
-      // colours for ordered partitions
-      colours
-        .append('div').append('span').text('Partition colours:')
-      let p = colours.append('div')
-      this.cellColours = [];
-      for(let i = 0; i != this.n; ++i) {
-        let c = 'hsl(' + (i*360/this.n) + ', 100%, 50%)';
-        this.cellColours.push(c);
-        p.append('span').text(i)
-          .style('display', 'inline-block')
-          .style('width', 100/this.n + "%")
-          .style('box-sizing', 'border-box')
-          .style('height', "3ex")
-          .style('border', '1px')
-          .style('border-style', 'solid')
-          .style('text-align', 'center')
-          .style('background-color', c)
-          ;
-      }
+    div.append("span")
+      .style("display", "inline-block")
+      .style("width", "1em");
+
+    div.append('button')
+      .attr("type", "button")
+      .html("&#9646;&#9668;&#9668;")
+      .on("click", () => {
+        $("#time").val(1);
+        this.updateSettings();
+      });
+    div.append('button')
+      .attr("type", "button")
+      .html("&#9668;&#9668;")
+      .on("click", () => {
+        let time = parseInt($("#time").val());
+        if(!time) return;
+        if(time == 1) return;
+        --time;
+        $("#time").val(time);
+        this.updateSettings();
+      });
+    div.append('button')
+      .attr("type", "button")
+      .style("word-spacing", "unset")
+      .html("&#9658;&#9658;")
+      .attr("id", "next")
+      .on("click", () => {
+        let time = parseInt($("#time").val());
+        if(!time) return;
+        ++time;
+        $("#time").val(time);
+        this.updateSettings();
+      });
+    div.append('button')
+      .attr("type", "button")
+      .html("&#9658;&#9658;&#9646;")
+      .on("click", () => {
+        $("#time").val(this.events.length + 1);
+        this.updateSettings();
+      });
+    div.append('input')
+      .attr('id', 'time')
+      .attr('required', true)
+      .attr('pattern', '[1-9][0-9]*')
+      .attr("type", "numeric")
+      .attr("value", this.events.length + 1)
+      .style("width", "4em")
+      .style("text-align", "center")
+      .on("keyup", () => {
+        if(d3.event.which === 13) $("#update").click();
+      });
+    div.append('button')
+      .attr("type", "button")
+      .attr("id", "update")
+      .text("Skip")
+      .on("click", this.updateSettings.bind(this));
+
+
+    // colours for ordered partitions
+    colours
+      .append('div').append('span').text('Partition colours:')
+    let p = colours.append('div')
+    this.cellColours = [];
+    for(let i = 0; i != this.n; ++i) {
+      let c = 'hsl(' + (i*360/this.n) + ', 100%, 50%)';
+      this.cellColours.push(c);
+      p.append('span').text(i)
+        .style('display', 'inline-block')
+        .style('width', 100/this.n + "%")
+        .style('box-sizing', 'border-box')
+        .style('height', "3ex")
+        .style('border', '1px')
+        .style('border-style', 'solid')
+        .style('text-align', 'center')
+        .style('background-color', c)
+        ;
+    }
   }
 
   updateSettings() {
@@ -1015,57 +1067,89 @@ class Visualizer {
 
 let visualizer = null;
 $(document).ready(function() {
-  let outer = d3.select("body div");
+  let outer = d3.select("body")
+    .style("padding-left", "5%")
+    .style("padding-right", "5%");
+  outer.append("h1").text("GraphCanon Visualizer");
   let div = outer.append("div");
   div.append('p')
-    .style("width", "80%")
-    .text(`
-		Upload a log or load an example from the server.
-		When log settings (i.e., which events to include and graph settings),
-		has been changed, load a new log or use "Reload log" to apply them.
-		Click on tree nodes to view the graph with colouring corresponding to the
-		ordered partition of that tree node.
+    .html(`
+    See <a href="https://github.com/jakobandersen/graph_canon_vis">here</a>
+    for the context of what this is.
 	`);
-  div.append("label")
-    .text("Server-side logs: ");
-  let serverSideLogs = div.append("select")
+  let logLoading = div;
+  logLoading.append("h2").text("Log Selection");
+  logLoading.append("p").text("Upload a log or load an example from the server.");
+
+  logLoading.append("label")
+    .style("margin-right", "1ex")
+    .text("Server-side logs:");
+  let serverSideLogs = logLoading.append("select")
     .attr("id", "serverSide");
-  div.append("input")
+  logLoading.append("input")
+    .style("margin-left", "1ex")
     .attr("id", "logLoad")
     .attr("type", "button")
-    .attr("value", "Load log");
+    .attr("value", "Load");
 
-  div = outer.append("div");
-  div.style("padding-bottom", 5);
-  div.append("input")
+  logLoading.append("label")
+    .style("margin", "0 1ex 0 2em")
+    .text("Custom log:");
+  logLoading.append("input")
     .attr("id", "logInput")
     .attr("type", "file");
-  div.append("input")
+  logLoading.append("input")
+    .style("margin-left", "1ex")
     .attr("id", "logUpload")
     .attr("type", "button")
     .attr("value", "Upload log");
-  div.append("input")
+
+  logLoading.append("h2").text("Log Settings");
+  logLoading.append("input")
     .attr("id", "logReload")
     .attr("type", "button")
     .attr("value", "Reload log");
-  div.append("label")
-    .text("Show 'destroy' events");
-  div.append("input")
+  logLoading.append("p")
+    .text(`After making changes use "Reload log", or load a new log, for the changes to take effect.`);
+
+  let settings = logLoading.append("ul")
+    .style("width", "40em")
+    .style("column-count", "2");
+  let item = null;
+  let width = "14em";
+  item = settings.append("li").append("span")
+    .style("display", "inline-block")
+    .style("width", width);
+  item.append("label").text("Show 'destroy' events:");
+  item.append("input")
+    .style("float", "right")
     .attr("id", "withDestroy")
     .attr("type", "checkbox");
-  div.append("label")
-    .text("Show 'before descend' events");
-  div.append("input")
+
+  item = settings.append("li").append("span")
+    .style("display", "inline-block")
+    .style("width", width);
+  item.append("label").text("Show 'before descend' events:");
+  item.append("input")
+    .style("float", "right")
     .attr("id", "withBeforeDescend")
     .attr("type", "checkbox");
-  div.append("label")
-    .text("Destroy nodes");
-  div.append("input")
+
+  item = settings.append("li").append("span")
+    .style("display", "inline-block")
+    .style("width", width);
+  item.append("label").text("Visually destroy nodes:");
+  item.append("input")
+    .style("float", "right")
     .attr("id", "destroyNodes")
     .attr("type", "checkbox");
-  div.append("label")
-    .text("Graph vertex distance");
-  div.append("input")
+
+  item = settings.append("li").append("span")
+    .style("display", "inline-block")
+    .style("width", width);
+  item.append("label").text("Graph vertex distance:");
+  item.append("input")
+    .style("float", "right")
     .attr("id", "graphVertexDistance")
     .attr('required', true)
     .attr('pattern', '[1-9][0-9]*')
@@ -1073,35 +1157,42 @@ $(document).ready(function() {
     .attr("value", 100)
     .style("width", 40)
     .style("text-align", "right")
-    .style("margin-left", "2px");
-    div.append("label")
-      .text("Graph width")
-      .style("margin-left", "2px");
-    div.append("input")
-      .attr("id", "graphWidth")
-      .attr('required', true)
-      .attr('pattern', '[1-9][0-9]*')
-      .attr("type", "numeric")
-      .attr("value", parseInt($(outer.node()).width()*0.8/3))
-      .style("width", 40)
-      .style("text-align", "right")
-      .style("margin-left", "2px");
-    div.append("label")
-      .text("Graph height")
-      .style("margin-left", "2px");
-    div.append("input")
-      .attr("id", "graphHeight")
-      .attr('required', true)
-      .attr('pattern', '[1-9][0-9]*')
-      .attr("type", "numeric")
-      .attr("value", 350)
-      .style("width", 40)
-      .style("text-align", "right")
-      .style("margin-left", "2px");
+    .style("padding-right", "0.5ex");
+
+  item = settings.append("li").append("span")
+    .style("display", "inline-block")
+    .style("width", width);
+  item.append("label").text("Graph width:");
+  item.append("input")
+    .style("float", "right")
+    .attr("id", "graphWidth")
+    .attr('required', true)
+    .attr('pattern', '[1-9][0-9]*')
+    .attr("type", "numeric")
+    .attr("value", parseInt($(outer.node()).width()*0.8/3))
+    .style("width", 40)
+    .style("text-align", "right")
+    .style("padding-right", "0.5ex");
+
+  item = settings.append("li").append("span")
+    .style("display", "inline-block")
+    .style("width", width);
+  item.append("label").text("Graph height:");
+  item.append("input")
+    .style("float", "right")
+    .attr("id", "graphHeight")
+    .attr('required', true)
+    .attr('pattern', '[1-9][0-9]*')
+    .attr("type", "numeric")
+    .attr("value", 350)
+    .style("width", 40)
+    .style("text-align", "right")
+    .style("padding-right", "0.5ex");;
+
+
 
   let container = outer.append("div")
-      .style("width", "80%")
-      .style("height", "700px");
+      .style("height", "900px");
 
   container = container.node();
 
