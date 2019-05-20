@@ -1,8 +1,10 @@
 [
 	{"name":"Default BFSExp","file":"default_bfs"},
 	{"name":"Default DFS","file":"default_dfs"},
-	{"name":"K4 Basic", "file":"k-4_bas"},
-	{"name":"K4 Schreier", "file":"k-4_sch"},
+	{"name":"K4 BFSExp Basic", "file":"k-4_bfs_bas"},
+	{"name":"K4 BFSExp Schreier", "file":"k-4_bfs_sch"},
+	{"name":"latin-4 DFS none","file":"latin-4_dfs_none"},
+	{"name":"latin-4 DFS PL-T-Q","file":"latin-4_dfs_all"},
 	{"name":"latin-6 BFSExp","file":"latin-6_bfs"},
 	{"name":"latin-6 DFS","file":"latin-6_dfs"}
 ]
