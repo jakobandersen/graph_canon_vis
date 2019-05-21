@@ -14,6 +14,7 @@ Installation
 ============
 
 1. Install ``npm`` in whatever way.
-2. Build it using ``npm run build``.
-3. The site is now in ``dist/``, which can be served by your favourite method.
-   E.g., in Python: ``cd dist/; python3 -m http.Server``.
+2. Install dependencies: ``npm install``
+3. Build it using ``npm run build``.
+4. The site is now in ``dist/``, which can be served by your favourite method.
+   E.g., in Python: ``cd dist/; python3 -m http.server``.
